@@ -20,30 +20,68 @@ install:
   kind: script
   script: |
     # career-compass 依赖安装脚本（Barry 版本）
-    # 安装所有 bundled 组件，无需二次操作
+    # 说明：
+    # 1. ClawHub 发布时未携带 INSTALL.bat / INSTALL.sh
+    # 2. 也未上传 uv.lock，本安装脚本不会依赖仓库内 lock 文件
+    # 3. 运行时如果系统已安装 uv / pipx 会优先使用，否则自动回退到 pip
 
     echo "============================================"
     echo "  Career Compass 依赖安装 (by Barry)"
     echo "============================================"
 
-    # Step 1: 安装 boss-cli (Python CLI)
-    echo ""
-    echo "▶ 安装 boss-cli..."
-    if command -v boss &>/dev/null; then
-        echo "  [OK] boss-cli 已安装"
-    else
-        # 优先 uv，次选 pipx，兜底 pip
-        if command -v uv &>/dev/null; then
-            uv tool install kabi-boss-cli 2>/dev/null && echo "  [OK] boss-cli 已安装 (uv)" || {
-                echo "  [INFO] uv 安装失败，尝试 pip..."
-                pip install kabi-boss-cli --user 2>/dev/null && echo "  [OK] boss-cli 已安装 (pip)" || echo "  [WARN] boss-cli 安装失败，请手动运行: pip install kabi-boss-cli"
-            }
-        elif command -v pipx &>/dev/null; then
-            pipx install kabi-boss-cli 2>/dev/null && echo "  [OK] boss-cli 已安装 (pipx)" || echo "  [WARN] boss-cli 安装失败"
-        else
-            pip install kabi-boss-cli --user 2>/dev/null && echo "  [OK] boss-cli 已安装 (pip)" || echo "  [WARN] boss-cli 安装失败，请手动运行: pip install kabi-boss-cli"
+    install_boss_cli() {
+        echo "▶ 安装 boss-cli..."
+
+        if command -v boss >/dev/null 2>&1; then
+            echo "  [OK] boss-cli 已安装"
+            return 0
         fi
-    fi
+
+        if command -v uv >/dev/null 2>&1; then
+            echo "  [INFO] 检测到 uv，优先使用 uv tool install"
+            uv tool install kabi-boss-cli >/dev/null 2>&1 && {
+                echo "  [OK] boss-cli 已安装 (uv)"
+                return 0
+            }
+            echo "  [WARN] uv 安装失败，准备继续尝试 pipx / pip"
+        fi
+
+        if command -v pipx >/dev/null 2>&1; then
+            echo "  [INFO] 检测到 pipx，尝试使用 pipx 安装"
+            pipx install kabi-boss-cli >/dev/null 2>&1 && {
+                echo "  [OK] boss-cli 已安装 (pipx)"
+                return 0
+            }
+            echo "  [WARN] pipx 安装失败，准备继续尝试 pip"
+        fi
+
+        if command -v pip >/dev/null 2>&1; then
+            echo "  [INFO] 尝试使用 pip --user 安装"
+            pip install kabi-boss-cli --user >/dev/null 2>&1 && {
+                echo "  [OK] boss-cli 已安装 (pip)"
+                return 0
+            }
+        elif command -v python >/dev/null 2>&1; then
+            echo "  [INFO] 尝试使用 python -m pip --user 安装"
+            python -m pip install kabi-boss-cli --user >/dev/null 2>&1 && {
+                echo "  [OK] boss-cli 已安装 (python -m pip)"
+                return 0
+            }
+        elif command -v python3 >/dev/null 2>&1; then
+            echo "  [INFO] 尝试使用 python3 -m pip --user 安装"
+            python3 -m pip install kabi-boss-cli --user >/dev/null 2>&1 && {
+                echo "  [OK] boss-cli 已安装 (python3 -m pip)"
+                return 0
+            }
+        fi
+
+        echo "  [WARN] boss-cli 自动安装失败，请手动运行："
+        echo "         pip install kabi-boss-cli --user"
+        return 1
+    }
+
+    echo ""
+    install_boss_cli
 
     # Step 2: 安装 PDF 工具链（用于简历解析）
     echo ""
